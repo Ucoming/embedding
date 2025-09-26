@@ -7,7 +7,9 @@ This repository provides a production-ready toolkit for generating text embeddin
 - Modular architecture with dedicated packages for model backends, chunking utilities, checkpointing and the high-level processing pipeline.
 - Pluggable embedding backends with built-in support for SentenceTransformer (e.g. BGE/Qwen) and OpenAI-compatible APIs.
 - Robust token-aware chunking with optional overlap to keep prompts within provider limits.
-- Incremental Parquet part files and JSON checkpoints that allow safe restarts after interruptions.
+
+- Incremental Parquet part files and JSON checkpoints that allow safe restarts after interruptions, now automatically fanning out into sub-directories to keep enormous outputs manageable.
+
 - Comprehensive unit tests covering chunking, checkpoint persistence and pipeline resume behaviour.
 
 ## Package structure
@@ -38,9 +40,10 @@ result_df = quick_embedding_pipeline(
     text_column="content",
     use_bge=True,
     use_gpt=False,
-    batch_size=128,
-    checkpoint_interval=5000,
-)
+
+    bge_model_name="Qwen/Qwen3-Embedding-8B",
+    bge_model_location="Qwen3-Embedding-8B",  # optional default local directory
+
 ```
 
 For more control instantiate the processor manually:
@@ -48,7 +51,14 @@ For more control instantiate the processor manually:
 ```python
 from tool_embedding import create_processor
 
-processor = create_processor(load_bge=True, load_gpt=False)
+
+processor = create_processor(
+    load_bge=True,
+    load_gpt=False,
+    bge_model_name="Qwen/Qwen3-Embedding-8B",
+    bge_model_location="Qwen3-Embedding-8B",  # override the default local cache path
+)
+
 df = ...  # pandas DataFrame
 embeddings = processor.process_dataframe(df, text_column="content", output_path="output.parquet")
 ```

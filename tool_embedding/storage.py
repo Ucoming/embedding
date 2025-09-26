@@ -6,7 +6,9 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Sequence
+
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
+
 
 import numpy as np
 import pandas as pd
@@ -33,9 +35,19 @@ def _serialise_embedding(value: Any) -> Any:
 class IncrementalSaver:
     """Handles saving embeddings in parts with resumable checkpoints."""
 
-    def __init__(self, output_path: str, *, chunk_size: int = 10000) -> None:
+
+    def __init__(
+        self,
+        output_path: str,
+        *,
+        chunk_size: int = 10000,
+        parts_per_directory: int = 200,
+    ) -> None:
         self.output_path = output_path
         self.chunk_size = chunk_size
+        self.parts_per_directory = max(parts_per_directory, 1)
+
+
 
     # ------------------------------------------------------------------
     # Checkpoint helpers
@@ -56,22 +68,19 @@ class IncrementalSaver:
 
         processed_count = data.get("processed_count", 0)
         embeddings_dir = self._embeddings_dir()
-        if os.path.exists(embeddings_dir):
-            part_files = [
-                f
-                for f in os.listdir(embeddings_dir)
-                if f.startswith("part-") and os.path.splitext(f)[1] in {".parquet", ".json"}
-            ]
-            if part_files:
-                max_part = max(int(f.split("-")[1].split(".")[0]) for f in part_files)
-                estimated = (max_part + 1) * self.chunk_size
-                if abs(estimated - processed_count) > self.chunk_size:
-                    logger.warning(
-                        "Checkpoint count (%s) differs from part files (%s). Using part file count.",
-                        processed_count,
-                        estimated,
-                    )
-                    processed_count = estimated
+
+        part_files = _discover_part_files(embeddings_dir)
+        if part_files:
+            max_part = max(index for index, _ in part_files)
+            estimated = (max_part + 1) * self.chunk_size
+            if abs(estimated - processed_count) > self.chunk_size:
+                logger.warning(
+                    "Checkpoint count (%s) differs from part files (%s). Using part file count.",
+                    processed_count,
+                    estimated,
+                )
+                processed_count = estimated
+
 
         logger.info(
             "Resuming from checkpoint: %s items processed (%.1f%%)",
@@ -128,7 +137,11 @@ class IncrementalSaver:
             return
 
         serialised = [_serialise_embedding(item) for item in chunk_results]
-        chunk_base = os.path.join(embeddings_dir, f"part-{current_chunk:05d}")
+
+        chunk_dir = self._chunk_directory(current_chunk)
+        os.makedirs(chunk_dir, exist_ok=True)
+        chunk_base = os.path.join(chunk_dir, f"part-{current_chunk:05d}")
+
         file_path = self._write_chunk(chunk_base, serialised)
         logger.info("Saved %s embeddings to %s", len(chunk_results), file_path)
 
@@ -154,3 +167,43 @@ class IncrementalSaver:
             with open(json_path, "w", encoding="utf-8") as handle:
                 json.dump(list(data), handle, ensure_ascii=False)
             return json_path
+
+
+    # ------------------------------------------------------------------
+    def _chunk_directory(self, chunk_index: int) -> str:
+        if self.parts_per_directory <= 0:
+            return self._embeddings_dir()
+        group = chunk_index // self.parts_per_directory
+        return os.path.join(self._embeddings_dir(), f"group-{group:05d}")
+
+
+def _discover_part_files(directory: str) -> List[Tuple[int, str]]:
+    """Return sorted ``(index, path)`` tuples for embedding part files."""
+
+    if not directory or not os.path.exists(directory):
+        return []
+
+    part_files: List[Tuple[int, str]] = []
+    for root, _, files in os.walk(directory):
+        for filename in files:
+            if not filename.startswith("part-"):
+                continue
+            ext = os.path.splitext(filename)[1]
+            if ext not in {".parquet", ".json"}:
+                continue
+            try:
+                chunk_index = int(filename.split("-")[1].split(".")[0])
+            except (IndexError, ValueError):
+                continue
+            part_files.append((chunk_index, os.path.join(root, filename)))
+
+    part_files.sort(key=lambda item: item[0])
+    return part_files
+
+
+def iter_part_paths(directory: str) -> Iterable[str]:
+    """Yield sorted embedding part file paths under ``directory``."""
+
+    for _, path in _discover_part_files(directory):
+        yield path
+
