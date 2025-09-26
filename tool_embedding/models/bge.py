@@ -30,7 +30,9 @@ class BGEEmbeddingBackend(EmbeddingBackend):
         *,
         max_tokens: int = 32000,
         local_model_dir: str | None = None,
+
         default_model_location: str | None = None,
+
         chunk_overlap: int = 50,
     ) -> None:
         if SentenceTransformer is None or AutoTokenizer is None:
@@ -52,11 +54,13 @@ class BGEEmbeddingBackend(EmbeddingBackend):
         os.environ.setdefault("TRANSFORMERS_CACHE", local_dir)
         os.environ.setdefault("HF_HOME", local_dir)
 
+
         local_model_path = _resolve_model_location(
             model_name=model_name,
             cache_dir=local_dir,
             default_location=default_model_location,
         )
+
         load_path = local_model_path if os.path.exists(local_model_path) else model_name
 
         model_kwargs = {
@@ -107,6 +111,7 @@ class BGEEmbeddingBackend(EmbeddingBackend):
             torch.cuda.empty_cache()
 
 
+
 def _resolve_model_location(*, model_name: str, cache_dir: str, default_location: str | None) -> str:
     if default_location:
         if os.path.isabs(default_location):
@@ -115,3 +120,4 @@ def _resolve_model_location(*, model_name: str, cache_dir: str, default_location
 
     safe_name = model_name.split(":", 1)[0].split("/")[-1]
     return os.path.join(cache_dir, safe_name)
+

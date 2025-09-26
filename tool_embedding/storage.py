@@ -6,7 +6,9 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
+
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
+
 
 import numpy as np
 import pandas as pd
@@ -33,6 +35,7 @@ def _serialise_embedding(value: Any) -> Any:
 class IncrementalSaver:
     """Handles saving embeddings in parts with resumable checkpoints."""
 
+
     def __init__(
         self,
         output_path: str,
@@ -43,6 +46,8 @@ class IncrementalSaver:
         self.output_path = output_path
         self.chunk_size = chunk_size
         self.parts_per_directory = max(parts_per_directory, 1)
+
+
 
     # ------------------------------------------------------------------
     # Checkpoint helpers
@@ -63,6 +68,7 @@ class IncrementalSaver:
 
         processed_count = data.get("processed_count", 0)
         embeddings_dir = self._embeddings_dir()
+
         part_files = _discover_part_files(embeddings_dir)
         if part_files:
             max_part = max(index for index, _ in part_files)
@@ -74,6 +80,7 @@ class IncrementalSaver:
                     estimated,
                 )
                 processed_count = estimated
+
 
         logger.info(
             "Resuming from checkpoint: %s items processed (%.1f%%)",
@@ -130,9 +137,11 @@ class IncrementalSaver:
             return
 
         serialised = [_serialise_embedding(item) for item in chunk_results]
+
         chunk_dir = self._chunk_directory(current_chunk)
         os.makedirs(chunk_dir, exist_ok=True)
         chunk_base = os.path.join(chunk_dir, f"part-{current_chunk:05d}")
+
         file_path = self._write_chunk(chunk_base, serialised)
         logger.info("Saved %s embeddings to %s", len(chunk_results), file_path)
 
@@ -158,6 +167,7 @@ class IncrementalSaver:
             with open(json_path, "w", encoding="utf-8") as handle:
                 json.dump(list(data), handle, ensure_ascii=False)
             return json_path
+
 
     # ------------------------------------------------------------------
     def _chunk_directory(self, chunk_index: int) -> str:
@@ -196,3 +206,4 @@ def iter_part_paths(directory: str) -> Iterable[str]:
 
     for _, path in _discover_part_files(directory):
         yield path
+

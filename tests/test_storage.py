@@ -4,12 +4,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+
 from tool_embedding.storage import IncrementalSaver, iter_part_paths
+
 
 
 def test_incremental_saver_roundtrip(tmp_path):
     output_path = tmp_path / "embeddings.parquet"
+
     saver = IncrementalSaver(str(output_path), chunk_size=2, parts_per_directory=1)
+
 
     results = [np.arange(3), np.arange(3)]
     saver.save_checkpoint(
@@ -26,7 +30,9 @@ def test_incremental_saver_roundtrip(tmp_path):
     assert state.processed_count == 2
 
     embeddings_dir = tmp_path / "embeddings"
+
     files = list(embeddings_dir.rglob("part-*"))
+
     assert files
     part_file = files[0]
     if part_file.suffix == ".parquet":
@@ -57,3 +63,4 @@ def test_iter_part_paths_nested(tmp_path):
         "part-00001.json",
         "part-00002.parquet",
     ]
+

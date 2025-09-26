@@ -9,7 +9,9 @@ import pandas as pd
 
 from .data import load_meeting_data
 from .pipeline import EmbeddingProcessor, ProcessorConfig
+
 from .storage import iter_part_paths
+
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +27,16 @@ __all__ = [
 def create_processor(
     *,
     bge_model_name: str = "Qwen/Qwen3-Embedding-8B",
+
     bge_model_location: Optional[str] = None,
+
     gpt_model_name: str = "text-embedding-3-small",
     max_bge_tokens: int = 32000,
     max_gpt_tokens: int = 8192,
     chunk_overlap: int = 50,
     checkpoint_chunk_size: int = 10000,
     parts_per_directory: int = 200,
+
     load_bge: bool = True,
     load_gpt: bool = False,
     local_model_dir: Optional[str] = None,
@@ -50,6 +55,7 @@ def create_processor(
                 model_name=bge_model_name,
                 max_tokens=max_bge_tokens,
                 local_model_dir=local_model_dir,
+
                 default_model_location=bge_model_location,
                 chunk_overlap=chunk_overlap,
             )
@@ -74,6 +80,7 @@ def create_processor(
     processor = EmbeddingProcessor(
         bge_backend=bge_backend,
         gpt_backend=gpt_backend,
+
         config=ProcessorConfig(
             chunk_overlap=chunk_overlap,
             checkpoint_chunk_size=checkpoint_chunk_size,
@@ -93,7 +100,9 @@ def quick_embedding_pipeline(
     use_bge: bool = True,
     use_gpt: bool = False,
     bge_model_name: str = "Qwen/Qwen3-Embedding-8B",
+
     bge_model_location: Optional[str] = None,
+
     gpt_model_name: str = "text-embedding-3-small",
     max_bge_tokens: int = 32000,
     max_gpt_tokens: int = 8192,
@@ -101,8 +110,10 @@ def quick_embedding_pipeline(
     env_file: Optional[str] = "oai_embeddings.env",
     batch_size: int = 64,
     checkpoint_interval: int = 10000,
+
     checkpoint_chunk_size: int = 10000,
     parts_per_directory: int = 200,
+
     skip_length_check: bool = True,
 ) -> pd.DataFrame:
     """High level helper mirroring the behaviour of the legacy script."""
@@ -110,13 +121,17 @@ def quick_embedding_pipeline(
     df = load_meeting_data(data_path, sheet_name=sheet_name)
     processor = create_processor(
         bge_model_name=bge_model_name,
+
         bge_model_location=bge_model_location,
+
         gpt_model_name=gpt_model_name,
         max_bge_tokens=max_bge_tokens,
         max_gpt_tokens=max_gpt_tokens,
         chunk_overlap=50,
+
         checkpoint_chunk_size=checkpoint_chunk_size,
         parts_per_directory=parts_per_directory,
+
         load_bge=use_bge,
         load_gpt=use_gpt,
         local_model_dir=local_model_dir,
@@ -136,6 +151,7 @@ def quick_embedding_pipeline(
 
     embeddings_dir = os.path.join(os.path.dirname(output_path), "embeddings")
     if os.path.exists(embeddings_dir):
+
         part_files = list(iter_part_paths(embeddings_dir))
         part_dirs = {os.path.dirname(path) for path in part_files}
         logger.info(
@@ -144,6 +160,7 @@ def quick_embedding_pipeline(
             len(part_dirs) or 1,
             embeddings_dir,
         )
+
     else:
         logger.info("No embeddings directory created; did you supply an output path?")
 

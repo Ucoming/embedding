@@ -14,6 +14,7 @@ from .chunking import heuristic_token_counter
 from .models.base import EmbeddingBackend
 from .storage import IncrementalSaver, iter_part_paths
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +23,7 @@ class ProcessorConfig:
     chunk_overlap: int = 50
     checkpoint_chunk_size: int = 10000
     parts_per_directory: int = 200
+
 
 
 class EmbeddingProcessor:
@@ -145,6 +147,7 @@ class EmbeddingProcessor:
                 chunk_size=self.config.checkpoint_chunk_size,
                 parts_per_directory=self.config.parts_per_directory,
             )
+
             if backend_output
             else None
         )
@@ -291,7 +294,9 @@ class EmbeddingProcessor:
         if not backend_output or processed_count <= 0:
             return []
         embeddings_dir = os.path.join(os.path.dirname(backend_output), "embeddings")
+
         part_files = list(iter_part_paths(embeddings_dir))
+
         if not part_files:
             return []
 
